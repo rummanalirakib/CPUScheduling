@@ -1,0 +1,7 @@
+Processes Arrival-time Burst-time
+P1           0           3   
+P2           1           2
+P3           2           1
+P4           3           4
+P5           4           5
+P6           5           2
