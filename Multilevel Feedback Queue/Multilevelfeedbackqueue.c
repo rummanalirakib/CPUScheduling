@@ -13,42 +13,81 @@ struct node {
     int turnAroundTime;
     int waitingTime;
     int priority;
+    int stayTimeQStart;
+    int startedQueue;
 } Process[1000];
 
-int QueueValue[1000], queueNumber, ProcessNumbers[1000], totalBurstTime;
-
-struct Queue {
-  int val;
-  struct Queue *next;
-};
+int QueueValue[1000], queueNumber, totalBurstTime, timeLimit;
 
 struct RoundRobinInfo {
-    struct Queue *top;
     int timeQuantum;
-    struct Queue *bottom;
 }roundRobinData[1000];
-
-int roundRobinFlag[1000];
 
 int compareArrivalTime(const void *s1, const void *s2)
 {
   struct node *e1 = (struct node *)s1;
   struct node *e2 = (struct node *)s2;
-  if(e1->arivalTime == e2->arivalTime) return strcmp(e1->processNumber, e2->processNumber);
-  else if(e1->arivalTime > e2->arivalTime) return 1;
-  else return 0;
+
+  if (e1->arivalTime == e2->arivalTime)
+    return strcmp(e1->processNumber, e2->processNumber);
+  else if (e1->arivalTime < e2->arivalTime)
+    return -1;
+  else
+    return 1;
 }
 
 int compareProcessNumber(const void *s1, const void *s2)
 {
-  struct node *e1 = (struct node *)s1;
-  struct node *e2 = (struct node *)s2;
-  int processNumber = strcmp(e1->processNumber, e2->processNumber);
-  return processNumber;
+    struct node *e1 = (struct node *)s1;
+    struct node *e2 = (struct node *)s2;
+
+    int num1 = atoi(e1->processNumber + 1);
+    int num2 = atoi(e2->processNumber + 1);
+
+    if (num1 < num2) {
+        return -1;
+    } else if (num1 > num2) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+void changePriorityQueue(int p)
+{
+    if(Process[p].burstTime>0){
+        if(Process[p].priority<queueNumber){
+           Process[p].priority++;
+        }
+        else{
+           Process[p].priority=1;
+        }
+        Process[p].stayTimeQStart=timeStart;
+    }
+}
+
+void changePriorityQueueThroughLoop()
+{
+    for(int i=0;i<numProcesses;i++)
+    {
+        if(Process[i].burstTime==0){
+            continue;
+        }
+        else if(Process[i].startedQueue==0 && Process[i].priority==1){
+            continue;
+        }
+        else if(Process[i].stayTimeQStart>0){
+            int diff=timeStart-Process[i].stayTimeQStart;
+            if(diff>timeLimit){
+                changePriorityQueue(i);
+            }
+        }
+    }
 }
 
 int checkAnotherProcess(int priority, int index)
 {
+    changePriorityQueueThroughLoop();
     for(int i=0;i<numProcesses;i++)
     {
         if(Process[i].arivalTime<=timeStart && Process[i].burstTime!=0 && Process[i].priority<priority && i!=index){
@@ -76,77 +115,50 @@ void setAllTimeRelatedValues(int p)
     Process[p].exitTime=timeStart;
     Process[p].turnAroundTime=trnArndTime;
     Process[p].waitingTime=trnArndTime-Process[p].burstTimeCheck;
+    changePriorityQueueThroughLoop();
 }
 
 void RoundRobinExecution(int priority, int processnumber)
 {
-    if(roundRobinFlag[priority]==0){
-      struct Queue *head = (struct Queue *) malloc (sizeof (struct Queue));
-      struct Queue *tail = (struct Queue *) malloc (sizeof (struct Queue));
-      tail->next=NULL;
-      head=tail;
-      roundRobinData[priority].top=head;
-      struct Queue *newNode = (struct Queue *) malloc (sizeof (struct Queue));
-      newNode->next = NULL;
-      tail->val = processnumber;
-      tail->next=newNode;
-      roundRobinData[priority].bottom=tail;
-    }
-    else{
-        struct Queue *tail=roundRobinData[priority].bottom;
-        struct Queue *newNode = (struct Queue *) malloc (sizeof (struct Queue));
-        newNode->next = NULL;
-        tail->val = processnumber;
-        tail->next=newNode;
-        roundRobinData[priority].bottom=tail;
-    }
     if(priority==1){
-         struct Queue *head=roundRobinData[priority].top;
-         int p=head->val;
+         int p=processnumber;
          if(Process[p].burstTime>roundRobinData[priority].timeQuantum){
             Process[p].burstTime -= roundRobinData[priority].timeQuantum;
             printf("%d-%d\t\t\t%s\n",timeStart, timeStart+roundRobinData[priority].timeQuantum, Process[p].processNumber);
             timeStart += roundRobinData[priority].timeQuantum;
-            head=head->next;
-            roundRobinData[priority].top=head;
             setThisProcessArrival(processnumber,priority);
+            changePriorityQueue(processnumber);
+            Process[p].startedQueue=1;
          }
          else{
             printf("%d-%d\t\t\t%s\n",timeStart, timeStart+Process[p].burstTime, Process[p].processNumber);
             timeStart+=Process[p].burstTime;
             Process[p].burstTime=0;
-            head=head->next;
-            roundRobinData[priority].top=head;
             setAllTimeRelatedValues(p);
          }
     }
     else{
-        struct Queue *head=roundRobinData[priority].top;
-        int p=head->val;
+        int p=processnumber;
         int tempTimeStart = timeStart;
         int count1=0;
         while(1){
             if(Process[p].burstTime==0){
                 printf("%d-%d\t\t\t%s\n",tempTimeStart, timeStart, Process[p].processNumber);
-                head=head->next;
-                roundRobinData[priority].top=head;
                 setAllTimeRelatedValues(p);
                 return;
             }
             else if(count1==roundRobinData[priority].timeQuantum){
                 printf("%d-%d\t\t\t%s\n",tempTimeStart, timeStart, Process[p].processNumber);
-                head=head->next;
-                roundRobinData[priority].top=head;
                 setThisProcessArrival(processnumber,priority);
+                changePriorityQueue(processnumber);
                 return;
             }
             else if(checkAnotherProcess(priority, p)){
                  printf("%d-%d\t\t\t%s\n",tempTimeStart, timeStart, Process[p].processNumber);
-                 head=head->next;
-                 roundRobinData[priority].top=head;
                  setThisProcessArrival(processnumber,priority);
                  return;
             }
+            Process[p].startedQueue=1;
             Process[p].burstTime -= 1;
             timeStart+=1;
             count1++;
@@ -158,13 +170,15 @@ void FCFS(int priority, int p)
 {
     if(priority==1){
         printf("%d-%d\t\t\t%s\n",timeStart, timeStart+Process[p].burstTime, Process[p].processNumber);
-        Process[p].burstTime=0;
         timeStart+=Process[p].burstTime;
+        Process[p].burstTime=0;
         setAllTimeRelatedValues(p);
+        changePriorityQueueThroughLoop();
     }
     else{
         int tempTimeStart = timeStart;
         while(1){
+            Process[p].stayTimeQStart=timeStart;
             if(Process[p].burstTime==0){
                 printf("%d-%d\t\t\t%s\n",tempTimeStart, timeStart, Process[p].processNumber);
                 setAllTimeRelatedValues(p);
@@ -174,6 +188,7 @@ void FCFS(int priority, int p)
                  printf("%d-%d\t\t\t%s\n",tempTimeStart, timeStart, Process[p].processNumber);
                  return;
             }
+            Process[p].startedQueue=1;
             Process[p].burstTime -= 1;
             timeStart+=1;
         }
@@ -185,7 +200,7 @@ int FindShortestJob(int qLevel)
     int index=-1, job=1e8;
     for(int i=0;i<numProcesses;i++)
     {
-        if(job>Process[i].burstTime && Process[i].priority==qLevel && Process[i].burstTime!=0){
+        if(job>Process[i].burstTime && Process[i].priority==qLevel && Process[i].burstTime!=0 && Process[i].arivalTime<=timeStart){
             index=i;
             job=Process[i].burstTime;
         }
@@ -196,18 +211,20 @@ int FindShortestJob(int qLevel)
 
 void ShortestJobFirst(int priority, int qLevel)
 {
-    int p=FindShortestJob(qLevel);
+    int p=FindShortestJob(priority);
     if(p>=0)
     {
         if(priority==1){
             printf("%d-%d\t\t\t%s\n",timeStart, timeStart+Process[p].burstTime, Process[p].processNumber);
-            Process[p].burstTime=0;
             timeStart+=Process[p].burstTime;
+            Process[p].burstTime=0;
             setAllTimeRelatedValues(p);
+            changePriorityQueueThroughLoop();
         }
         else{
             int tempTimeStart = timeStart;
             while(1){
+                Process[p].stayTimeQStart=timeStart;
                 if(Process[p].burstTime==0){
                     printf("%d-%d\t\t\t%s\n",tempTimeStart, timeStart, Process[p].processNumber);
                     setAllTimeRelatedValues(p);
@@ -217,10 +234,14 @@ void ShortestJobFirst(int priority, int qLevel)
                      printf("%d-%d\t\t\t%s\n",tempTimeStart, timeStart, Process[p].processNumber);
                      return;
                 }
+                Process[p].startedQueue=1;
                 Process[p].burstTime -= 1;
                 timeStart+=1;
             }
         }
+    }
+    else{
+        timeStart++;
     }
 }
 
@@ -306,8 +327,12 @@ void ReadFromFile()
         Process[numProcesses].burstTime=burstTime;
         Process[numProcesses].burstTimeCheck=burstTime;
         Process[numProcesses].priority=priority;
+        Process[numProcesses].stayTimeQStart=arivalTime;
+        timeLimit+=Process[numProcesses].burstTime;
         numProcesses++;
     }
+    totalBurstTime=timeLimit;
+    timeLimit/=numProcesses;
     fclose(file);
 }
 
@@ -318,10 +343,16 @@ void RandomProcessGenerate()
     for(int i=0;i<numProcesses;i++){
        strcpy(Process[i].processNumber,toArray(i+1));
        Process[i].arivalTime=rand()%numProcesses;
+       Process[i].arivalTimeCheck=Process[i].arivalTime;
        Process[i].burstTime=rand()%numProcesses;
-       Process[i].priority=rand()%queueNumber;
+       Process[i].burstTimeCheck=Process[i].burstTime;
+       Process[i].priority=rand()%(queueNumber+1);
        if(Process[i].priority==0) Process[i].priority=1;
+       Process[i].stayTimeQStart=Process[i].arivalTime;
+       timeLimit+=Process[i].burstTime;
     }
+    totalBurstTime=timeLimit;
+    timeLimit/=numProcesses;
 }
 
 void QueueInformation()
@@ -345,8 +376,19 @@ void QueueInformation()
         else if(val>3 || val<0){
             printf("Please select the right number.\n");
             i--;
+            continue;
         }
         QueueValue[i]=val;
+    }
+}
+
+void PrintTheProcesses()
+{
+    printf("Printing All the Processes:\n");
+    printf("Process\t\tArrivalTime\t\tBurstTime\t\tPriority\n");
+    for(int i=0;i<numProcesses;i++)
+    {
+        printf("%s\t\t%d\t\t\t%d\t\t\t%d\n",Process[i].processNumber, Process[i].arivalTime, Process[i].burstTime, Process[i].priority);
     }
 }
 
@@ -359,6 +401,7 @@ int main() {
     scanf("%d", &n);
     totalBurstTime=0;
     numProcesses=0;
+    timeLimit=0;
     if(n==1){
         QueueInformation();
         numProcesses=0;
@@ -368,6 +411,7 @@ int main() {
         QueueInformation();
         RandomProcessGenerate();
     }
+    PrintTheProcesses();
     GanttChart();
     VariousTimeProcess();
     return 0;

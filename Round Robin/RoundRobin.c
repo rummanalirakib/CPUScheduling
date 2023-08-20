@@ -22,30 +22,30 @@ int compareArrivalTime(const void *s1, const void *s2)
 {
   struct node *e1 = (struct node *)s1;
   struct node *e2 = (struct node *)s2;
-  if(e1->arivalTime == e2->arivalTime) return strcmp(e1->processNumber, e2->processNumber);
-  else if(e1->arivalTime > e2->arivalTime) return 1;
-  else return 0;
+
+  if (e1->arivalTime == e2->arivalTime)
+    return strcmp(e1->processNumber, e2->processNumber);
+  else if (e1->arivalTime < e2->arivalTime)
+    return -1;
+  else
+    return 1;
 }
 
 int compareProcessNumber(const void *s1, const void *s2)
 {
-  struct node *e1 = (struct node *)s1;
-  struct node *e2 = (struct node *)s2;
-  int processNumber = strcmp(e1->processNumber, e2->processNumber);
-  return processNumber;
-}
+    struct node *e1 = (struct node *)s1;
+    struct node *e2 = (struct node *)s2;
 
-void insertStart(struct Queue *head, int data)
-{
-  printf("Data: %d\n",data);
-  struct Queue *newNode = (struct Queue *) malloc (sizeof (struct Queue));
-  newNode->next = NULL;
-  printf("Data1: %d\n",data);
-  head->val = data;
-  printf("Data2: %d\n",data);
-  head->next=newNode;
-  printf("Data3: %d\n",data);
-  head=head->next;
+    int num1 = atoi(e1->processNumber + 1);
+    int num2 = atoi(e2->processNumber + 1);
+
+    if (num1 < num2) {
+        return -1;
+    } else if (num1 > num2) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 void GanttChart()
@@ -150,7 +150,7 @@ void ReadFromFile()
 {
     printf("Input Time Quantum: ");
     scanf("%d",&timeQuantum);
-    FILE* file = fopen("file.txt", "r");
+    FILE* file = fopen("roundrobin.txt", "r");
     if (file == NULL) {
         printf("Error opening the file.\n");
     }
@@ -174,12 +174,24 @@ void RandomProcessGenerate()
 {
     printf("Enter number of processes: ");
     scanf("%d",&numProcesses);
-    timeQuantum = rand()%100 + 1;
+    printf("Input Time Quantum: ");
+    scanf("%d",&timeQuantum);
     for(int i=0;i<numProcesses;i++){
        strcpy(Process[i].processNumber,toArray(i+1));
        Process[i].arivalTime=rand()%numProcesses;
        Process[i].burstTime=rand()%numProcesses;
+       if(Process[i].burstTime==0) Process[i].burstTime=1;
        Process[i].burstTimeCheck=Process[i].burstTime;
+    }
+}
+
+void PrintTheProcesses()
+{
+    printf("Printing All the Processes:\n");
+    printf("Process\t\tArrivalTime\t\tBurstTime\n");
+    for(int i=0;i<numProcesses;i++)
+    {
+        printf("%s\t\t%d\t\t\t%d\n",Process[i].processNumber, Process[i].arivalTime, Process[i].burstTime);
     }
 }
 
@@ -197,6 +209,7 @@ int main() {
     else{
         RandomProcessGenerate();
     }
+    PrintTheProcesses();
     GanttChart();
     VariousTimeProcess();
     return 0;

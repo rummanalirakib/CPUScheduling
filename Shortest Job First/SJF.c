@@ -10,38 +10,36 @@ struct node {
     int exitTime;
     int turnAroundTime;
     int waitingTime;
-} Process[1000];
+} Process[10000];
 
 int compareProcessNumber(const void *s1, const void *s2)
 {
-  struct node *e1 = (struct node *)s1;
-  struct node *e2 = (struct node *)s2;
-  int processNumber = strcmp(e1->processNumber, e2->processNumber);
-  return processNumber;
+    struct node *e1 = (struct node *)s1;
+    struct node *e2 = (struct node *)s2;
+
+    int num1 = atoi(e1->processNumber + 1);
+    int num2 = atoi(e2->processNumber + 1);
+
+    if (num1 < num2) {
+        return -1;
+    } else if (num1 > num2) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
-int compareBurstTime(const void  *s1, const void *s2)
-{
-  struct node *e1 = (struct node *)s1;
-  struct node *e2 = (struct node *)s2;
-  if(e1->arivalTime <= currentTime && e2->arivalTime <= currentTime) {
-    if(e1->burstTime == e2->burstTime) return e1->arivalTime > e2->arivalTime;
-    else return e1->burstTime > e2->burstTime;
-  }
-  else return e1->arivalTime > e2->arivalTime;
-}
+int compareBurstTime(const void *s1, const void *s2) {
+    struct node *e1 = (struct node *)s1;
+    struct node *e2 = (struct node *)s2;
 
-
-void SortProcesses() {
-    for(int i=0;i<numProcesses;i++)
-    {
-        for(int j=i+1;j<numProcesses;j++){
-            if(compareBurstTime(&Process[i], &Process[j])){
-                 struct node temp = Process[i];
-                 Process[i] = Process[j];
-                 Process[j] = temp;
-            }
-        }
+    if (e1->arivalTime <= currentTime && e2->arivalTime <= currentTime) {
+        if (e1->burstTime == e2->burstTime)
+            return (e1->arivalTime < e2->arivalTime) ? -1 : 1;
+        else
+            return (e1->burstTime < e2->burstTime) ? -1 : 1;
+    } else {
+        return (e1->arivalTime < e2->arivalTime) ? -1 : 1;
     }
 }
 
@@ -53,7 +51,7 @@ void GanttChart()
     printf("TimeDuration\t\tProcess\n");
     while(count1<numProcesses)
     {
-        SortProcesses();
+        qsort(Process, numProcesses, sizeof(struct node), compareBurstTime);
         if(timeStart<Process[0].arivalTime){
             printf("%d-%d\t\t\tIdle Time\n",timeStart, Process[0].arivalTime);
             timeStart=Process[0].arivalTime;
@@ -62,7 +60,7 @@ void GanttChart()
         else{
            int exitTime=timeStart+Process[0].burstTime;
            int trnArndTime=exitTime-Process[0].arivalTime;
-           printf("%d-%d\t\t\t%s\n",timeStart, exitTime, Process[0].processNumber, exitTime);
+           printf("%d-%d\t\t\t%s\n",timeStart, exitTime, Process[0].processNumber);
            currentTime=exitTime;
            Process[0].exitTime=exitTime;
            Process[0].turnAroundTime=trnArndTime;
@@ -127,6 +125,17 @@ void RandomProcessGenerate()
        strcpy(Process[i].processNumber,toArray(i+1));
        Process[i].arivalTime=rand()%numProcesses;
        Process[i].burstTime=rand()%numProcesses;
+       if(Process[i].burstTime==0) Process[i].burstTime=1;
+    }
+}
+
+void PrintTheProcesses()
+{
+    printf("Printing All the Processes:\n");
+    printf("Process\t\tArrivalTime\t\tBurstTime\n");
+    for(int i=0;i<numProcesses;i++)
+    {
+        printf("%s\t\t%d\t\t\t%d\n",Process[i].processNumber, Process[i].arivalTime, Process[i].burstTime);
     }
 }
 
@@ -144,6 +153,7 @@ int main() {
     else{
         RandomProcessGenerate();
     }
+    PrintTheProcesses();
     GanttChart();
     VariousTimeProcess();
     return 0;

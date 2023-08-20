@@ -2,28 +2,16 @@
 #include<string.h>
 #include <stdlib.h>
 #include<math.h>
-int numProcesses;
+int numProcesses, currentTime, timeStart;
 struct node {
     char processNumber[10];
     int arivalTime;
     int burstTime;
+    int anthrBurstTime;
     int exitTime;
     int turnAroundTime;
     int waitingTime;
 } Process[1000];
-
-int compareArrivalTime(const void *s1, const void *s2)
-{
-  struct node *e1 = (struct node *)s1;
-  struct node *e2 = (struct node *)s2;
-
-  if (e1->arivalTime == e2->arivalTime)
-    return strcmp(e1->processNumber, e2->processNumber);
-  else if (e1->arivalTime < e2->arivalTime)
-    return -1;
-  else
-    return 1;
-}
 
 int compareProcessNumber(const void *s1, const void *s2)
 {
@@ -42,28 +30,65 @@ int compareProcessNumber(const void *s1, const void *s2)
     }
 }
 
+int compareBurstTime(const void *s1, const void *s2) {
+    struct node *e1 = (struct node *)s1;
+    struct node *e2 = (struct node *)s2;
+
+    if (e1->arivalTime <= currentTime && e2->arivalTime <= currentTime) {
+        if (e1->burstTime == e2->burstTime)
+            return (e1->arivalTime < e2->arivalTime) ? -1 : 1;
+        else
+            return (e1->burstTime < e2->burstTime) ? -1 : 1;
+    } else {
+        return (e1->arivalTime < e2->arivalTime) ? -1 : 1;
+    }
+}
+
 void GanttChart()
 {
-    qsort(Process, numProcesses, sizeof(struct node), compareArrivalTime);
-    int timeStart=0, i=0;
+    int count1=0, flag=0;
+    currentTime=0;
+    timeStart=0;
     printf("Gant Chart:\n");
     printf("TimeDuration\t\tProcess\n");
-    while(i<numProcesses)
+    char processCode[10]="P0";
+    while(count1<numProcesses)
     {
-        if(timeStart<Process[i].arivalTime){
-            printf("%d-%d\t\t\tIdle Time\n",timeStart, Process[i].arivalTime);
-            timeStart=Process[i].arivalTime;
+        qsort(Process, numProcesses, sizeof(struct node), compareBurstTime);
+        if(currentTime<Process[0].arivalTime){
+            printf("%d-%d\t\t\tIdle Time\n",timeStart, Process[0].arivalTime);
+            timeStart=Process[0].arivalTime;
+            currentTime=timeStart;
+            continue;
         }
-        else{
-           int exitTime=timeStart+Process[i].burstTime;
-           int trnArndTime=exitTime-Process[i].arivalTime;
-           printf("%d-%d\t\t\t%s\n",timeStart, exitTime, Process[i].processNumber, exitTime);
-           Process[i].exitTime=exitTime;
-           Process[i].turnAroundTime=trnArndTime;
-           Process[i].waitingTime=trnArndTime-Process[i].burstTime;
-           timeStart+=Process[i].burstTime;
-           i++;
+
+        if(Process[0].burstTime>1){
+            if(strcmp(processCode, Process[0].processNumber)!=0 && strcmp(processCode, "P0")!=0 && timeStart!=currentTime){
+                printf("%d-%d\t\t\t%s\n",timeStart, currentTime, processCode);
+                timeStart=currentTime;
+            }
+            currentTime+=1;
+            Process[0].burstTime-=1;
         }
+        else if(Process[0].burstTime==1){
+           if(strcmp(processCode, Process[0].processNumber)!=0 && strcmp(processCode, "P0")!=0 && timeStart!=currentTime){
+                printf("%d-%d\t\t\t%s\n",timeStart, currentTime, processCode);
+                timeStart=currentTime;
+           }
+           printf("%d-%d\t\t\t%s\n",timeStart, currentTime+1, Process[0].processNumber);
+           currentTime+=1;
+           Process[0].burstTime-=1;
+           if(Process[0].burstTime<=0){
+              int trnArndTime=currentTime-Process[0].arivalTime;
+              Process[0].exitTime=currentTime;
+              Process[0].turnAroundTime=trnArndTime;
+              Process[0].waitingTime=trnArndTime-Process[0].anthrBurstTime;
+              Process[0].arivalTime=1e8;
+              count1++;
+           }
+           timeStart=currentTime;
+        }
+        strcpy(processCode, Process[0].processNumber);
     }
 }
 
@@ -93,7 +118,7 @@ char* toArray(int number)
 
 void ReadFromFile()
 {
-    FILE* file = fopen("FIFO.txt", "r");
+    FILE* file = fopen("file.txt", "r");
     if (file == NULL) {
         printf("Error opening the file.\n");
     }
@@ -107,6 +132,7 @@ void ReadFromFile()
         strcpy(Process[numProcesses].processNumber,processNumber);
         Process[numProcesses].arivalTime=arivalTime;
         Process[numProcesses].burstTime=burstTime;
+        Process[numProcesses].anthrBurstTime=burstTime;
         numProcesses++;
     }
     fclose(file);
@@ -121,6 +147,7 @@ void RandomProcessGenerate()
        Process[i].arivalTime=rand()%numProcesses;
        Process[i].burstTime=rand()%numProcesses;
        if(Process[i].burstTime==0) Process[i].burstTime=1;
+       Process[i].anthrBurstTime=Process[i].burstTime;
     }
 }
 
@@ -135,7 +162,7 @@ void PrintTheProcesses()
 }
 
 int main() {
-    printf("CPU Scheduling for FIFO(First in first out):\n");
+    printf("CPU Scheduling for SJF(Shortest Job First):\n");
     printf("1. Read the processes from file\n");
     printf("2. Random Value Generate for the process\n");
     printf("Enter 1 or 2: ");

@@ -8,6 +8,7 @@ struct node {
     int priorityNumber;
     int arivalTime;
     int burstTime;
+    int anthrBurstTime;
     int exitTime;
     int turnAroundTime;
     int waitingTime;
@@ -47,26 +48,42 @@ void GanttChart()
     currentTime=0;
     printf("Gant Chart:\n");
     printf("TimeDuration\t\tProcess\n");
+    char processCode[10]="P0";
     while(count1<numProcesses)
     {
         qsort(Process, numProcesses, sizeof(struct node), comparePriorityTime);
-        if(timeStart<Process[0].arivalTime){
+        if(currentTime<Process[0].arivalTime){
             printf("%d-%d\t\t\tIdle Time\n",timeStart, Process[0].arivalTime);
             timeStart=Process[0].arivalTime;
             currentTime=timeStart;
         }
-        else{
-           int exitTime=timeStart+Process[0].burstTime;
-           int trnArndTime=exitTime-Process[0].arivalTime;
-           printf("%d-%d\t\t\t%s\n",timeStart, exitTime, Process[0].processNumber, exitTime);
-           currentTime=exitTime;
-           Process[0].exitTime=exitTime;
-           Process[0].turnAroundTime=trnArndTime;
-           Process[0].waitingTime=trnArndTime-Process[0].burstTime;
-           Process[0].arivalTime=1e8;
-           timeStart+=Process[0].burstTime;
-           count1++;
+        if(Process[0].burstTime>1){
+            if(strcmp(processCode, Process[0].processNumber)!=0 && strcmp(processCode, "P0")!=0 && timeStart!=currentTime){
+                printf("%d-%d\t\t\t%s\n",timeStart, currentTime, processCode);
+                timeStart=currentTime;
+            }
+            currentTime+=1;
+            Process[0].burstTime-=1;
         }
+        else if(Process[0].burstTime==1){
+           if(strcmp(processCode, Process[0].processNumber)!=0 && strcmp(processCode, "P0")!=0 && timeStart!=currentTime){
+                printf("%d-%d\t\t\t%s\n",timeStart, currentTime, processCode);
+                timeStart=currentTime;
+           }
+           printf("%d-%d\t\t\t%s\n",timeStart, currentTime+1, Process[0].processNumber);
+           currentTime+=1;
+           Process[0].burstTime-=1;
+           if(Process[0].burstTime<=0){
+              int trnArndTime=currentTime-Process[0].arivalTime;
+              Process[0].exitTime=currentTime;
+              Process[0].turnAroundTime=trnArndTime;
+              Process[0].waitingTime=trnArndTime-Process[0].anthrBurstTime;
+              Process[0].arivalTime=1e8;
+              count1++;
+           }
+           timeStart=currentTime;
+        }
+        strcpy(processCode, Process[0].processNumber);
     }
 }
 
@@ -96,7 +113,7 @@ char* toArray(int number)
 
 void ReadFromFile()
 {
-    FILE* file = fopen("PriorityScheduling.txt", "r");
+    FILE* file = fopen("PrioritySchedulingPreEmptive.txt", "r");
     if (file == NULL) {
         printf("Error opening the file.\n");
     }
@@ -112,6 +129,7 @@ void ReadFromFile()
         Process[numProcesses].priorityNumber=priorityNumber;
         Process[numProcesses].arivalTime=arivalTime;
         Process[numProcesses].burstTime=burstTime;
+        Process[numProcesses].anthrBurstTime = burstTime;
         numProcesses++;
     }
     fclose(file);
@@ -126,6 +144,7 @@ void RandomProcessGenerate()
        Process[i].priorityNumber=rand()%numProcesses;
        Process[i].arivalTime=rand()%numProcesses;
        Process[i].burstTime=rand()%numProcesses;
+       Process[i].anthrBurstTime = Process[i].burstTime;
        if(Process[i].burstTime==0) Process[i].burstTime=1;
     }
 }
